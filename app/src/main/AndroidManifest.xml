@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- صلاحيات الإنترنت -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- للسماح برفع الصور والفيديو -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+
+    <application
+        android:allowBackup="true"
+        android:label="SHOFYOU"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        android:usesCleartextTraffic="true">
+
+        <!-- MainActivity هو شاشة البداية الآن -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+        </activity>
+
+        <!-- PopupActivity لفتح الروابط الخارجية -->
+        <activity
+            android:name=".PopupActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+    </application>
+
+</manifest>

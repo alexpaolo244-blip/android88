@@ -1,0 +1,22 @@
+workflows:
+  shofyou-debug:
+    name: Shofyou Debug APK
+    max_build_duration: 60
+    instance_type: mac_mini_m1 # إضافة نوع الجهاز تسرع العملية وتضمن استقرار البيئة
+    environment:
+      java: 17
+    scripts:
+      - name: Grant execute permission to gradlew
+        script: chmod +x gradlew
+      - name: Build Debug APK
+        script: ./gradlew assembleDebug
+    artifacts:
+      # استخدام العلامة النجمية (*) يضمن التقاط الملف حتى لو تغير اسمه قليلاً
+      - app/build/outputs/apk/debug/*.apk 
+    publishing:
+      email:
+        recipients:
+          - alexpaolo244@gmail.com # تأكد من وضع بريدك الحقيقي هنا
+        notify:
+          success: true
+          failure: true
