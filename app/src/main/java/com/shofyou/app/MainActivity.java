@@ -71,6 +71,13 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 splashLogo.setVisibility(View.GONE);
                 swipe.setRefreshing(false);
+
+                // 🔹 تعطيل السحب داخل صفحة الريلز فقط
+                if (url != null && url.contains("/reels/")) {
+                    swipe.setEnabled(false);
+                } else {
+                    swipe.setEnabled(true);
+                }
             }
 
             @Override
