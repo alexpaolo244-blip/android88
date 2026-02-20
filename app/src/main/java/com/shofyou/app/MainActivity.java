@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -101,32 +100,30 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                Intent intent = new Intent(Intent.ACTION_PICK);
-                
-                // فحص دقيق جداً لنوع الطلب من الموقع
-                String[] acceptTypes = params.getAcceptTypes();
+                // 🔹 الحل الجذري: تحديد نوع الميم قبل إنشاء الـ Intent
                 String mimeType = "*/*";
-
-                for (String type : acceptTypes) {
-                    if (type.contains("image")) {
+                if (params.getAcceptTypes() != null && params.getAcceptTypes().length > 0) {
+                    String primaryType = params.getAcceptTypes()[0];
+                    if (primaryType.contains("image")) {
                         mimeType = "image/*";
-                        intent.setData(MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-                        break; 
-                    } else if (type.contains("video")) {
+                    } else if (primaryType.contains("video")) {
                         mimeType = "video/*";
-                        intent.setData(MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
-                        break;
                     }
                 }
 
-                intent.setType(mimeType);
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType(mimeType); // 🔹 هذا هو السطر الذي يفلتر المعرض مثل كروم
                 
+                // دعم اختيار صور متعددة إذا كان الموقع يسمح بذلك
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+
                 try {
                     startActivityForResult(Intent.createChooser(intent, "Select"), 100);
                 } catch (Exception e) {
                     fileCallback.onReceiveValue(null);
                     fileCallback = null;
+                    return false;
                 }
                 return true;
             }
