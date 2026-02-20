@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // إعدادات شريط الحالة لجعل التطبيق يبدو عصرياً
+        // إعدادات شريط الحالة
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
@@ -56,8 +56,6 @@ public class MainActivity extends AppCompatActivity {
         ws.setAllowFileAccess(true);
         ws.setAllowContentAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
-        
-        // تحسين الكاش لسرعة استجابة التطبيق عند الفتح
         ws.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         CookieManager.getInstance().setAcceptCookie(true);
@@ -66,13 +64,11 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                // إخفاء السبلاش كخطوة نهائية عند اكتمال التحميل
                 if (splashLogo.getVisibility() == View.VISIBLE) {
                     splashLogo.setVisibility(View.GONE);
                 }
                 swipe.setRefreshing(false);
 
-                // تعطيل السحب للتحديث في صفحة الريلز
                 if (url != null && url.contains("/reels/")) {
                     swipe.setEnabled(false);
                 } else {
@@ -87,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
                     view.loadUrl(url);
                     return true;
                 }
-                // فتح الروابط الخارجية في نشاط منبثق
                 startActivity(new Intent(MainActivity.this, PopupActivity.class).putExtra("url", url));
                 return true;
             }
@@ -95,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebChromeClient(new WebChromeClient() {
             
-            // تسريع إخفاء شاشة السبلاش (تظهر الصفحة للمستخدم عند وصول التحميل لـ 80%)
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress > 80) {
@@ -103,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // فتح المعرض (Gallery) مباشرة بناءً على نوع الملف المطلوب
+            // التعديل الجديد لضمان فتح معرض الصور/الفيديو مباشرة
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (fileCallback != null) {
@@ -111,36 +105,27 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                Intent intent;
-                String title = "Select Media";
-
-                // فحص ما إذا كان الموقع يطلب صورة أو فيديو
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                
+                // تحديد النوع بدقة شديدة لإجبار النظام على فتح تطبيقات المعرض
                 if (params.getAcceptTypes().length > 0) {
                     String type = params.getAcceptTypes()[0];
-                    
                     if (type.contains("image")) {
-                        // يفتح معرض الصور مباشرة (Action Pick)
-                        intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                         intent.setType("image/*");
-                        title = "Select Image";
                     } else if (type.contains("video")) {
-                        // يفتح معرض الفيديوهات مباشرة
-                        intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
                         intent.setType("video/*");
-                        title = "Select Video";
                     } else {
-                        // خيار احتياطي للملفات الأخرى
-                        intent = new Intent(Intent.ACTION_GET_CONTENT);
-                        intent.addCategory(Intent.CATEGORY_OPENABLE);
                         intent.setType("*/*");
                     }
                 } else {
-                    intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.setType("*/*");
                 }
 
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                startActivityForResult(Intent.createChooser(intent, title), 100);
+                
+                // هذا السطر يمنع فتح مدير الملفات في كثير من الأجهزة ويظهر قائمة التطبيقات (المعرض، صور جوجل، إلخ)
+                startActivityForResult(Intent.createChooser(intent, "Choose App"), 100);
                 return true;
             }
         });
@@ -158,7 +143,6 @@ public class MainActivity extends AppCompatActivity {
         handleBack();
     }
 
-    // استقبال الملفات المختارة ومعالجة تعدد الصور لمنع الانهيار (Crash)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -167,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
 
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
-                // التعامل مع اختيار عدة ملفات
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
@@ -175,7 +158,6 @@ public class MainActivity extends AppCompatActivity {
                         results[i] = data.getClipData().getItemAt(i).getUri();
                     }
                 } else if (data.getData() != null) {
-                    // ملف واحد فقط
                     results = new Uri[]{data.getData()};
                 }
             }
