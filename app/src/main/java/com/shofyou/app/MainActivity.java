@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // تخصيص المعرض ليفتح (صور فقط) أو (فيديو فقط) بناءً على ضغطة المستخدم
+            // فتح المعرض (Gallery) مباشرة بناءً على نوع الملف المطلوب
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (fileCallback != null) {
@@ -111,25 +111,36 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                Intent intent;
+                String title = "Select Media";
 
-                // التحقق من نوع الملف المطلوب من الموقع (Sngine)
+                // فحص ما إذا كان الموقع يطلب صورة أو فيديو
                 if (params.getAcceptTypes().length > 0) {
                     String type = params.getAcceptTypes()[0];
+                    
                     if (type.contains("image")) {
-                        intent.setType("image/*"); // يظهر معرض الصور فقط
+                        // يفتح معرض الصور مباشرة (Action Pick)
+                        intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                        intent.setType("image/*");
+                        title = "Select Image";
                     } else if (type.contains("video")) {
-                        intent.setType("video/*"); // يظهر معرض الفيديو فقط
+                        // يفتح معرض الفيديوهات مباشرة
+                        intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                        intent.setType("video/*");
+                        title = "Select Video";
                     } else {
+                        // خيار احتياطي للملفات الأخرى
+                        intent = new Intent(Intent.ACTION_GET_CONTENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
                         intent.setType("*/*");
                     }
                 } else {
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.setType("*/*");
                 }
 
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                startActivityForResult(Intent.createChooser(intent, "Select Media"), 100);
+                startActivityForResult(Intent.createChooser(intent, title), 100);
                 return true;
             }
         });
@@ -156,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
 
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
+                // التعامل مع اختيار عدة ملفات
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
@@ -163,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
                         results[i] = data.getClipData().getItemAt(i).getUri();
                     }
                 } else if (data.getData() != null) {
+                    // ملف واحد فقط
                     results = new Uri[]{data.getData()};
                 }
             }
