@@ -2,6 +2,7 @@ package com.shofyou.app;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
@@ -26,53 +27,51 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private SwipeRefreshLayout swipe;
     private ValueCallback<Uri[]> fileCallback;
+    private ImageView splashLogo;
 
     private final String HOME_URL = "https://shofyou.com";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // إعدادات شريط الحالة (Status Bar)
         getWindow().setStatusBarColor(Color.TRANSPARENT);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-            int nightModeFlags =
-                    getResources().getConfiguration().uiMode
-                            & Configuration.UI_MODE_NIGHT_MASK;
-
+            int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
             if (nightModeFlags != Configuration.UI_MODE_NIGHT_YES) {
-
-                getWindow().getDecorView().setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
             }
         }
 
         webView = findViewById(R.id.webview);
         swipe = findViewById(R.id.swipe);
-        ImageView splashLogo = findViewById(R.id.splashLogo);
+        splashLogo = findViewById(R.id.splashLogo);
 
         WebSettings ws = webView.getSettings();
-
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
+        ws.setAllowContentAccess(true); // مهم لرفع الملفات
         ws.setMediaPlaybackRequiresUserGesture(false);
+        
+        // تحسين الكاش لزيادة سرعة التصفح
+        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
-
             @Override
             public void onPageFinished(WebView view, String url) {
-                splashLogo.setVisibility(View.GONE);
+                // إخفاء الـ Splash هنا كخطوة احتياطية إذا لم يختفِ قبل ذلك
+                if (splashLogo.getVisibility() == View.VISIBLE) {
+                    splashLogo.setVisibility(View.GONE);
+                }
                 swipe.setRefreshing(false);
 
-                // 🔹 تعطيل السحب داخل صفحة الريلز فقط
                 if (url != null && url.contains("/reels/")) {
                     swipe.setEnabled(false);
                 } else {
@@ -81,106 +80,96 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view,
-                                                    WebResourceRequest request) {
-
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-
                 if (url.contains("shofyou.com")) {
                     view.loadUrl(url);
                     return true;
                 }
-
-                startActivity(
-                        new android.content.Intent(MainActivity.this,
-                                PopupActivity.class)
-                                .putExtra("url", url)
-                );
-
+                startActivity(new Intent(MainActivity.this, PopupActivity.class).putExtra("url", url));
                 return true;
             }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
-
+            
+            // حل مشكلة السرعة: إخفاء السبلاش بمجرد أن تبدأ الصفحة بالظهور (80%)
             @Override
-            public boolean onShowFileChooser(WebView webView,
-                                             ValueCallback<Uri[]> callback,
-                                             FileChooserParams params) {
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (newProgress > 80) {
+                    splashLogo.setVisibility(View.GONE);
+                }
+            }
 
+            // حل مشكلة رفع الملفات وجعلها تفتح المعرض مباشرة
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileCallback != null) {
+                    fileCallback.onReceiveValue(null);
+                }
                 fileCallback = callback;
 
-                android.content.Intent intent =
-                        new android.content.Intent(
-                                android.content.Intent.ACTION_PICK,
-                                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*"); // يسمح باختيار أي ملف
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // السماح بتعدد الصور
 
-                intent.setType("*/*");
-                intent.putExtra(android.content.Intent.EXTRA_MIME_TYPES,
-                        new String[]{"image/*", "video/*"});
-                intent.putExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, true);
-
-                startActivityForResult(intent, 100);
-
+                startActivityForResult(Intent.createChooser(intent, "Select Media"), 100);
                 return true;
             }
         });
 
         swipe.setOnRefreshListener(() -> {
-
             String current = webView.getUrl();
-
             if (current != null && current.contains("/reels/")) {
-
                 swipe.setRefreshing(false);
-
             } else {
-
                 webView.reload();
             }
         });
 
         webView.loadUrl(HOME_URL);
-
         handleBack();
     }
 
+    // الدالة المسؤولة عن استقبال الصور المختارة ومنع الانهيار
     @Override
-    protected void onActivityResult(int requestCode,
-                                    int resultCode,
-                                    android.content.Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 100) {
+            if (fileCallback == null) return;
 
-        if (fileCallback == null) return;
-
-        Uri[] result = null;
-
-        if (resultCode == RESULT_OK && data != null) {
-
-            result = new Uri[]{data.getData()};
+            Uri[] results = null;
+            if (resultCode == RESULT_OK && data != null) {
+                if (data.getClipData() != null) { // في حال اختيار عدة صور
+                    int count = data.getClipData().getItemCount();
+                    results = new Uri[count];
+                    for (int i = 0; i < count; i++) {
+                        results[i] = data.getClipData().getItemAt(i).getUri();
+                    }
+                } else if (data.getData() != null) { // في حال اختيار صورة واحدة
+                    results = new Uri[]{data.getData()};
+                }
+            }
+            fileCallback.onReceiveValue(results);
+            fileCallback = null;
         }
-
-        fileCallback.onReceiveValue(result);
-        fileCallback = null;
     }
 
     private void handleBack() {
-
-        getOnBackPressedDispatcher().addCallback(this,
-                new OnBackPressedCallback(true) {
-
-                    @Override
-                    public void handleOnBackPressed() {
-
-                        if (webView.canGoBack())
-                            webView.goBack();
-                        else
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setMessage("Exit app?")
-                                    .setPositiveButton("Yes",
-                                            (d, i) -> finish())
-                                    .setNegativeButton("No", null)
-                                    .show();
-                    }
-                });
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView.canGoBack())
+                    webView.goBack();
+                else
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setMessage("Exit app?")
+                            .setPositiveButton("Yes", (d, i) -> finish())
+                            .setNegativeButton("No", null)
+                            .show();
+            }
+        });
     }
 }
