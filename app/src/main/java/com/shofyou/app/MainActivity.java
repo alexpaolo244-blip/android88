@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -56,8 +57,6 @@ public class MainActivity extends AppCompatActivity {
         ws.setAllowFileAccess(true);
         ws.setAllowContentAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
-        
-        // تحسين الكاش للسرعة
         ws.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         CookieManager.getInstance().setAcceptCookie(true);
@@ -66,10 +65,7 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                // إخفاء السبلاش كخطوة احتياطية
-                if (splashLogo.getVisibility() == View.VISIBLE) {
-                    splashLogo.setVisibility(View.GONE);
-                }
+                splashLogo.setVisibility(View.GONE);
                 swipe.setRefreshing(false);
                 if (url != null && url.contains("/reels/")) {
                     swipe.setEnabled(false);
@@ -92,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebChromeClient(new WebChromeClient() {
             
-            // تسريع إخفاء شاشة السبلاش
+            // 🔹 تسريع إخفاء السبلاش (السرعة الرائعة التي أعجبتك)
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress > 80) {
@@ -107,30 +103,36 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                Intent intent;
+                
+                // 🔹 التحقق الذكي: ماذا يريد الموقع الآن؟
+                String[] types = params.getAcceptTypes();
+                boolean wantsVideo = false;
+                boolean wantsImage = false;
 
-                // 🔹 الحل الجذري هنا: قراءة نوع الملف المطلوب من الموقع بدقة
-                String[] acceptTypes = params.getAcceptTypes();
-                boolean isVideo = false;
-                boolean isImage = false;
-
-                for (String type : acceptTypes) {
-                    if (type.contains("video")) isVideo = true;
-                    if (type.contains("image")) isImage = true;
+                for (String type : types) {
+                    if (type.contains("video")) wantsVideo = true;
+                    if (type.contains("image")) wantsImage = true;
                 }
 
-                if (isImage && !isVideo) {
-                    intent.setType("image/*"); // يفتح معرض الصور فقط
-                } else if (isVideo && !isImage) {
-                    intent.setType("video/*"); // يفتح معرض الفيديوهات فقط
+                if (wantsVideo && !wantsImage) {
+                    // إذا كان فيديو فقط: يفتح المعرض للفيديوهات فقط
+                    intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("video/*");
+                } else if (wantsImage && !wantsVideo) {
+                    // إذا كان صور فقط: يفتح المعرض للصور فقط
+                    intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("image/*");
                 } else {
+                    // إذا كان كلاهما أو غير محدد
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("*/*");
                     intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
                 }
 
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                startActivityForResult(Intent.createChooser(intent, "Select Content"), 100);
+                startActivityForResult(Intent.createChooser(intent, "Select Media"), 100);
                 return true;
             }
         });
@@ -156,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
 
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
-                // 🔹 تصحيح اختيار عدة ملفات لضمان عدم خروج التطبيق
+                // 🔹 معالجة اختيار ملف واحد أو عدة ملفات لضمان عدم حدوث Crash
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
