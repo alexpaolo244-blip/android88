@@ -28,37 +28,77 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private SwipeRefreshLayout swipe;
     private ValueCallback<Uri[]> fileCallback;
-    private ImageView splashLogo;
 
     private final String HOME_URL = "https://shofyou.com";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         getWindow().setStatusBarColor(Color.TRANSPARENT);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+            int nightModeFlags =
+                    getResources().getConfiguration().uiMode
+                            & Configuration.UI_MODE_NIGHT_MASK;
+
+            if (nightModeFlags != Configuration.UI_MODE_NIGHT_YES) {
+
+                getWindow().getDecorView().setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            }
+        }
+
         webView = findViewById(R.id.webview);
         swipe = findViewById(R.id.swipe);
-        splashLogo = findViewById(R.id.splashLogo);
+        ImageView splashLogo = findViewById(R.id.splashLogo);
 
         WebSettings ws = webView.getSettings();
+
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
-        ws.setAllowContentAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 splashLogo.setVisibility(View.GONE);
                 swipe.setRefreshing(false);
+
+                if (url != null && url.contains("/reels/")) {
+                    swipe.setEnabled(false);
+                } else {
+                    swipe.setEnabled(true);
+                }
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view,
+                                                    WebResourceRequest request) {
+
+                String url = request.getUrl().toString();
+
+                if (url.contains("shofyou.com")) {
+                    view.loadUrl(url);
+                    return true;
+                }
+
+                startActivity(
+                        new Intent(MainActivity.this,
+                                PopupActivity.class)
+                                .putExtra("url", url)
+                );
+
+                return true;
             }
         });
 
@@ -69,43 +109,30 @@ public class MainActivity extends AppCompatActivity {
                                              ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
 
-                if (fileCallback != null) {
-                    fileCallback.onReceiveValue(null);
-                }
                 fileCallback = callback;
 
                 boolean isVideo = false;
-                boolean isImage = false;
 
                 String[] types = params.getAcceptTypes();
                 if (types != null) {
                     for (String t : types) {
-                        if (t == null) continue;
-                        t = t.toLowerCase();
-                        if (t.contains("video")) isVideo = true;
-                        if (t.contains("image")) isImage = true;
+                        if (t != null && t.contains("video")) {
+                            isVideo = true;
+                            break;
+                        }
                     }
                 }
 
-                Intent intent = new Intent(Intent.ACTION_PICK);
+                Intent intent;
 
-                if (isVideo && !isImage) {
-                    intent.setDataAndType(
-                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                            "video/*"
-                    );
-                }
-                else if (isImage && !isVideo) {
-                    intent.setDataAndType(
-                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                            "image/*"
-                    );
-                }
-                else {
-                    // في حالة */* أو الاثنين معاً
-                    intent.setType("*/*");
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES,
-                            new String[]{"image/*", "video/*"});
+                if (isVideo) {
+                    intent = new Intent(Intent.ACTION_PICK,
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("video/*");
+                } else {
+                    intent = new Intent(Intent.ACTION_PICK,
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("image/*");
                 }
 
                 startActivityForResult(intent, 100);
@@ -113,26 +140,60 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        swipe.setOnRefreshListener(() -> {
+
+            String current = webView.getUrl();
+
+            if (current != null && current.contains("/reels/")) {
+
+                swipe.setRefreshing(false);
+
+            } else {
+
+                webView.reload();
+            }
+        });
+
         webView.loadUrl(HOME_URL);
+
+        handleBack();
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    protected void onActivityResult(int requestCode,
+                                    int resultCode,
+                                    Intent data) {
 
-        if (requestCode == 100) {
-            if (fileCallback == null) return;
+        if (fileCallback == null) return;
 
-            Uri[] results = null;
+        Uri[] result = null;
 
-            if (resultCode == RESULT_OK && data != null) {
-                if (data.getData() != null) {
-                    results = new Uri[]{data.getData()};
-                }
-            }
-
-            fileCallback.onReceiveValue(results);
-            fileCallback = null;
+        if (resultCode == RESULT_OK && data != null) {
+            result = new Uri[]{data.getData()};
         }
+
+        fileCallback.onReceiveValue(result);
+        fileCallback = null;
+    }
+
+    private void handleBack() {
+
+        getOnBackPressedDispatcher().addCallback(this,
+                new OnBackPressedCallback(true) {
+
+                    @Override
+                    public void handleOnBackPressed() {
+
+                        if (webView.canGoBack())
+                            webView.goBack();
+                        else
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setMessage("Exit app?")
+                                    .setPositiveButton("Yes",
+                                            (d, i) -> finish())
+                                    .setNegativeButton("No", null)
+                                    .show();
+                    }
+                });
     }
 }
