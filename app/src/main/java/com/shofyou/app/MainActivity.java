@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // إعدادات شريط الحالة
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             int nightModeFlags = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
@@ -89,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
-            
+
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress > 80) {
@@ -97,9 +96,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // التعديل الجديد لضمان فتح معرض الصور/الفيديو مباشرة
+            // ✅ التعديل هنا فقط
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
+
                 if (fileCallback != null) {
                     fileCallback.onReceiveValue(null);
                 }
@@ -107,25 +107,24 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                
-                // تحديد النوع بدقة شديدة لإجبار النظام على فتح تطبيقات المعرض
-                if (params.getAcceptTypes().length > 0) {
-                    String type = params.getAcceptTypes()[0];
+
+                String[] acceptTypes = params.getAcceptTypes();
+                String mimeType = "*/*";
+
+                if (acceptTypes != null && acceptTypes.length > 0) {
+                    String type = acceptTypes[0];
+
                     if (type.contains("image")) {
-                        intent.setType("image/*");
+                        mimeType = "image/*";
                     } else if (type.contains("video")) {
-                        intent.setType("video/*");
-                    } else {
-                        intent.setType("*/*");
+                        mimeType = "video/*";
                     }
-                } else {
-                    intent.setType("*/*");
                 }
 
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-                
-                // هذا السطر يمنع فتح مدير الملفات في كثير من الأجهزة ويظهر قائمة التطبيقات (المعرض، صور جوجل، إلخ)
-                startActivityForResult(Intent.createChooser(intent, "Choose App"), 100);
+                intent.setType(mimeType);
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+
+                startActivityForResult(intent, 100);
                 return true;
             }
         });
