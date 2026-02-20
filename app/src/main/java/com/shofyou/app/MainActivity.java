@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -100,26 +101,39 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                // 🔹 الحل الجذري: تحديد نوع الميم قبل إنشاء الـ Intent
-                String mimeType = "*/*";
-                if (params.getAcceptTypes() != null && params.getAcceptTypes().length > 0) {
-                    String primaryType = params.getAcceptTypes()[0];
-                    if (primaryType.contains("image")) {
-                        mimeType = "image/*";
-                    } else if (primaryType.contains("video")) {
-                        mimeType = "video/*";
+                Intent intent;
+                
+                // 🔹 منطق الفصل الصارم والمطابق لكروم
+                String[] types = params.getAcceptTypes();
+                boolean wantsVideo = false;
+                boolean wantsImage = false;
+
+                if (types != null) {
+                    for (String type : types) {
+                        if (type.contains("video")) wantsVideo = true;
+                        if (type.contains("image")) wantsImage = true;
                     }
                 }
 
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType(mimeType); // 🔹 هذا هو السطر الذي يفلتر المعرض مثل كروم
-                
-                // دعم اختيار صور متعددة إذا كان الموقع يسمح بذلك
-                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                // استخدام ACTION_PICK لإجبار فتح المعرض وليس مدير الملفات
+                if (wantsVideo && !wantsImage) {
+                    intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("video/*");
+                } else if (wantsImage && !wantsVideo) {
+                    intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("image/*");
+                } else {
+                    // إذا كان الطلب مختلطاً، نستخدم الواجهة العامة
+                    intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
+                }
 
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                
                 try {
-                    startActivityForResult(Intent.createChooser(intent, "Select"), 100);
+                    startActivityForResult(Intent.createChooser(intent, "Select Media"), 100);
                 } catch (Exception e) {
                     fileCallback.onReceiveValue(null);
                     fileCallback = null;
@@ -147,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 100) {
             if (fileCallback == null) return;
+
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
                 if (data.getClipData() != null) {
