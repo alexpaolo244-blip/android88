@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // ✅ فتح المعرض مباشرة بدون مدير ملفات
+            // ✅ فتح المعرض الصحيح حسب النوع (صورة / فيديو)
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
 
@@ -106,15 +106,21 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileCallback = callback;
 
-                Intent intent;
-                String[] acceptTypes = params.getAcceptTypes();
-                String type = "";
+                boolean isVideo = false;
 
-                if (acceptTypes != null && acceptTypes.length > 0) {
-                    type = acceptTypes[0];
+                String[] acceptTypes = params.getAcceptTypes();
+                if (acceptTypes != null) {
+                    for (String t : acceptTypes) {
+                        if (t != null && t.contains("video")) {
+                            isVideo = true;
+                            break;
+                        }
+                    }
                 }
 
-                if (type != null && type.contains("video")) {
+                Intent intent;
+
+                if (isVideo) {
                     intent = new Intent(Intent.ACTION_PICK,
                             MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
                 } else {
