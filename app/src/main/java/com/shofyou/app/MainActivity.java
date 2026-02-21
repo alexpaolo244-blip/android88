@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         ImageView splashLogo = findViewById(R.id.splashLogo);
 
         WebSettings ws = webView.getSettings();
+
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
@@ -108,15 +109,20 @@ public class MainActivity extends AppCompatActivity {
                                              ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
 
+                if (fileCallback != null) {
+                    fileCallback.onReceiveValue(null);
+                }
+
                 fileCallback = callback;
 
-                boolean isImageRequest = false;
+                boolean isImageRequest = true;
 
                 String[] types = params.getAcceptTypes();
+
                 if (types != null) {
                     for (String t : types) {
-                        if (t != null && t.toLowerCase().contains("image")) {
-                            isImageRequest = true;
+                        if (t != null && t.toLowerCase().contains("video")) {
+                            isImageRequest = false;
                             break;
                         }
                     }
@@ -126,16 +132,17 @@ public class MainActivity extends AppCompatActivity {
 
                 if (isImageRequest) {
 
-                    // 🔥 صور فقط — بدون فيديو — بدون مدير ملفات
+                    // 🔥 فتح المعرض مباشرة للصور فقط
                     intent = new Intent(Intent.ACTION_PICK,
                             MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+
                     intent.setType("image/*");
 
                 } else {
 
-                    // فيديو أو غير محدد — اترك النظام يتصرف
+                    // الفيديو (لا مشكلة لو فتح مدير ملفات)
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
-                    intent.setType("*/*");
+                    intent.setType("video/*");
                 }
 
                 startActivityForResult(intent, 100);
@@ -155,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(HOME_URL);
+
         handleBack();
     }
 
@@ -162,6 +170,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode,
                                     int resultCode,
                                     Intent data) {
+
+        super.onActivityResult(requestCode, resultCode, data);
 
         if (fileCallback == null) return;
 
