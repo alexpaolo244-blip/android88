@@ -41,13 +41,11 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(Color.TRANSPARENT);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
             int nightModeFlags =
                     getResources().getConfiguration().uiMode
                             & Configuration.UI_MODE_NIGHT_MASK;
 
             if (nightModeFlags != Configuration.UI_MODE_NIGHT_YES) {
-
                 getWindow().getDecorView().setSystemUiVisibility(
                         View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
             }
@@ -58,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
         ImageView splashLogo = findViewById(R.id.splashLogo);
 
         WebSettings ws = webView.getSettings();
-
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
@@ -115,14 +112,14 @@ public class MainActivity extends AppCompatActivity {
 
                 fileCallback = callback;
 
-                boolean isImageRequest = true;
+                boolean isVideo = false;
 
                 String[] types = params.getAcceptTypes();
 
                 if (types != null) {
                     for (String t : types) {
                         if (t != null && t.toLowerCase().contains("video")) {
-                            isImageRequest = false;
+                            isVideo = true;
                             break;
                         }
                     }
@@ -130,19 +127,19 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent;
 
-                if (isImageRequest) {
+                if (isVideo) {
 
-                    // 🔥 فتح المعرض مباشرة للصور فقط
+                    // 🔥 فيديو فقط
                     intent = new Intent(Intent.ACTION_PICK,
-                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-
-                    intent.setType("image/*");
+                            MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("video/*");
 
                 } else {
 
-                    // الفيديو (لا مشكلة لو فتح مدير ملفات)
-                    intent = new Intent(Intent.ACTION_GET_CONTENT);
-                    intent.setType("video/*");
+                    // 🔥 صور فقط
+                    intent = new Intent(Intent.ACTION_PICK,
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                    intent.setType("image/*");
                 }
 
                 startActivityForResult(intent, 100);
@@ -151,9 +148,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         swipe.setOnRefreshListener(() -> {
-
             String current = webView.getUrl();
-
             if (current != null && current.contains("/reels/")) {
                 swipe.setRefreshing(false);
             } else {
@@ -162,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(HOME_URL);
-
         handleBack();
     }
 
@@ -205,4 +199,4 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
-}
+            }
