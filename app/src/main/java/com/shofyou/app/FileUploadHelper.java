@@ -1,42 +1,63 @@
 package com.shofyou.app;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 
+import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
+
+import java.util.List;
 
 public class FileUploadHelper {
 
     private ValueCallback<Uri[]> fileCallback;
-    private final Activity activity;
-    private ActivityResultLauncher<Intent> launcher;
+    private final ComponentActivity activity;
 
-    public FileUploadHelper(Activity activity) {
+    private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker;
+    private final ActivityResultLauncher<PickVisualMediaRequest> videoPicker;
+
+    public FileUploadHelper(ComponentActivity activity) {
+
         this.activity = activity;
 
-        launcher = ((androidx.activity.ComponentActivity) activity)
-                .registerForActivityResult(
-                        new ActivityResultContracts.StartActivityForResult(),
-                        result -> {
-                            if (fileCallback == null) return;
+        imagePicker = activity.registerForActivityResult(
+                new ActivityResultContracts.PickMultipleVisualMedia(),
+                uris -> {
+                    if (fileCallback == null) return;
 
-                            Uri[] results = null;
+                    if (uris != null && !uris.isEmpty()) {
+                        Uri[] results = new Uri[uris.size()];
+                        for (int i = 0; i < uris.size(); i++) {
+                            results[i] = uris.get(i);
+                        }
+                        fileCallback.onReceiveValue(results);
+                    } else {
+                        fileCallback.onReceiveValue(null);
+                    }
 
-                            if (result.getResultCode() == Activity.RESULT_OK &&
-                                    result.getData() != null &&
-                                    result.getData().getData() != null) {
+                    fileCallback = null;
+                });
 
-                                results = new Uri[]{result.getData().getData()};
-                            }
+        videoPicker = activity.registerForActivityResult(
+                new ActivityResultContracts.PickMultipleVisualMedia(),
+                uris -> {
+                    if (fileCallback == null) return;
 
-                            fileCallback.onReceiveValue(results);
-                            fileCallback = null;
-                        });
+                    if (uris != null && !uris.isEmpty()) {
+                        Uri[] results = new Uri[uris.size()];
+                        for (int i = 0; i < uris.size(); i++) {
+                            results[i] = uris.get(i);
+                        }
+                        fileCallback.onReceiveValue(results);
+                    } else {
+                        fileCallback.onReceiveValue(null);
+                    }
+
+                    fileCallback = null;
+                });
     }
 
     public boolean handleFileChooser(ValueCallback<Uri[]> callback,
@@ -56,21 +77,22 @@ public class FileUploadHelper {
             }
         }
 
-        Intent intent;
-
         if (isVideo) {
-            // فيديو فقط
-            intent = new Intent(Intent.ACTION_PICK,
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
-            intent.setType("video/*");
+            videoPicker.launch(
+                    new PickVisualMediaRequest
+                            .Builder()
+                            .setMediaType(ActivityResultContracts.PickVisualMedia.VideoOnly.INSTANCE)
+                            .build()
+            );
         } else {
-            // 🔥 صور فقط (بدون مدير ملفات)
-            intent = new Intent(Intent.ACTION_PICK,
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            intent.setType("image/*");
+            imagePicker.launch(
+                    new PickVisualMediaRequest
+                            .Builder()
+                            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                            .build()
+            );
         }
 
-        launcher.launch(intent);
         return true;
     }
 }
