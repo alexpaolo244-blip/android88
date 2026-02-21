@@ -86,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
-            
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 if (newProgress > 80) {
@@ -103,37 +102,32 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent;
                 
-                // 🔹 منطق الفصل الصارم والمطابق لكروم
-                String[] types = params.getAcceptTypes();
-                boolean wantsVideo = false;
-                boolean wantsImage = false;
-
-                if (types != null) {
-                    for (String type : types) {
-                        if (type.contains("video")) wantsVideo = true;
-                        if (type.contains("image")) wantsImage = true;
+                // 🔹 فحص النوع المطلوب من الموقع
+                boolean isImageRequest = false;
+                if (params.getAcceptTypes() != null) {
+                    for (String type : params.getAcceptTypes()) {
+                        if (type.contains("image")) {
+                            isImageRequest = true;
+                            break;
+                        }
                     }
                 }
 
-                // استخدام ACTION_PICK لإجبار فتح المعرض وليس مدير الملفات
-                if (wantsVideo && !wantsImage) {
-                    intent = new Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
-                    intent.setType("video/*");
-                } else if (wantsImage && !wantsVideo) {
+                if (isImageRequest) {
+                    // 🔹 إجبار النظام على فتح "معرض الصور" حصراً وإخفاء الفيديوهات
                     intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     intent.setType("image/*");
                 } else {
-                    // إذا كان الطلب مختلطاً، نستخدم الواجهة العامة
+                    // للطلبات الأخرى (مثل الفيديو) يفتح مدير الملفات الافتراضي كما تفضل
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("*/*");
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
                 }
 
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 
                 try {
-                    startActivityForResult(Intent.createChooser(intent, "Select Media"), 100);
+                    startActivityForResult(Intent.createChooser(intent, "Select Image"), 100);
                 } catch (Exception e) {
                     fileCallback.onReceiveValue(null);
                     fileCallback = null;
@@ -161,7 +155,6 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 100) {
             if (fileCallback == null) return;
-
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null) {
                 if (data.getClipData() != null) {
