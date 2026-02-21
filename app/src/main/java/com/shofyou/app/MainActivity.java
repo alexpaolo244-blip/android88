@@ -102,23 +102,23 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent intent;
                 
-                // 🔹 فحص النوع المطلوب من الموقع
-                boolean isImageRequest = false;
-                if (params.getAcceptTypes() != null) {
+                // فحص دقيق لنوع الطلب من الموقع
+                boolean isImageOnly = false;
+                if (params.getAcceptTypes() != null && params.getAcceptTypes().length > 0) {
                     for (String type : params.getAcceptTypes()) {
                         if (type.contains("image")) {
-                            isImageRequest = true;
+                            isImageOnly = true;
                             break;
                         }
                     }
                 }
 
-                if (isImageRequest) {
-                    // 🔹 إجبار النظام على فتح "معرض الصور" حصراً وإخفاء الفيديوهات
+                if (isImageOnly) {
+                    // 🔹 الحل: استخدام ACTION_PICK مع MediaStore لفتح المعرض حصراً
                     intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                     intent.setType("image/*");
                 } else {
-                    // للطلبات الأخرى (مثل الفيديو) يفتح مدير الملفات الافتراضي كما تفضل
+                    // في حال طلب فيديو أو ملفات أخرى، يفتح مدير الملفات بشكل طبيعي
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("*/*");
@@ -127,11 +127,10 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 
                 try {
-                    startActivityForResult(Intent.createChooser(intent, "Select Image"), 100);
+                    startActivityForResult(Intent.createChooser(intent, "اختر صورة"), 100);
                 } catch (Exception e) {
                     fileCallback.onReceiveValue(null);
                     fileCallback = null;
-                    return false;
                 }
                 return true;
             }
@@ -180,9 +179,9 @@ public class MainActivity extends AppCompatActivity {
                     webView.goBack();
                 else
                     new AlertDialog.Builder(MainActivity.this)
-                            .setMessage("Exit app?")
-                            .setPositiveButton("Yes", (d, i) -> finish())
-                            .setNegativeButton("No", null)
+                            .setMessage("هل تريد الخروج؟")
+                            .setPositiveButton("نعم", (d, i) -> finish())
+                            .setNegativeButton("لا", null)
                             .show();
             }
         });
