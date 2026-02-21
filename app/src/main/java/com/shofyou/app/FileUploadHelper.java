@@ -1,5 +1,7 @@
 package com.shofyou.app;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -17,13 +19,13 @@ public class FileUploadHelper {
     private final ComponentActivity activity;
 
     private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker;
-    private final ActivityResultLauncher<String> videoPicker;
+    private final ActivityResultLauncher<Intent> videoPicker;
 
     public FileUploadHelper(ComponentActivity activity) {
 
         this.activity = activity;
 
-        // ✅ الصور (لم يتم لمسها)
+        // ✅ الصور (لا نلمسها)
         imagePicker = activity.registerForActivityResult(
                 new ActivityResultContracts.PickMultipleVisualMedia(),
                 uris -> {
@@ -43,23 +45,35 @@ public class FileUploadHelper {
                     fileCallback = null;
                 });
 
-        // 🔥 الفيديو فقط تم تغييره هنا
+        // 🔥 الفيديو باستخدام intent الأصلي مثل Chrome
         videoPicker = activity.registerForActivityResult(
-                new ActivityResultContracts.GetMultipleContents(),
-                uris -> {
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
 
                     if (fileCallback == null) return;
 
-                    if (uris != null && !uris.isEmpty()) {
-                        Uri[] results = new Uri[uris.size()];
-                        for (int i = 0; i < uris.size(); i++) {
-                            results[i] = uris.get(i);
+                    Uri[] results = null;
+
+                    if (result.getResultCode() == Activity.RESULT_OK &&
+                            result.getData() != null) {
+
+                        if (result.getData().getClipData() != null) {
+
+                            int count = result.getData().getClipData().getItemCount();
+                            results = new Uri[count];
+
+                            for (int i = 0; i < count; i++) {
+                                results[i] =
+                                        result.getData().getClipData().getItemAt(i).getUri();
+                            }
+
+                        } else if (result.getData().getData() != null) {
+
+                            results = new Uri[]{result.getData().getData()};
                         }
-                        fileCallback.onReceiveValue(results);
-                    } else {
-                        fileCallback.onReceiveValue(null);
                     }
 
+                    fileCallback.onReceiveValue(results);
                     fileCallback = null;
                 });
     }
@@ -72,6 +86,7 @@ public class FileUploadHelper {
         boolean isVideo = false;
 
         String[] types = params.getAcceptTypes();
+
         if (types != null) {
             for (String t : types) {
                 if (t != null && t.toLowerCase().contains("video")) {
@@ -83,8 +98,9 @@ public class FileUploadHelper {
 
         if (isVideo) {
 
-            // 🔥 هذا هو التعديل الوحيد
-            videoPicker.launch("video/*");
+            // 🔥 نستخدم intent الافتراضي مثل Chrome
+            Intent intent = params.createIntent();
+            videoPicker.launch(intent);
 
         } else {
 
