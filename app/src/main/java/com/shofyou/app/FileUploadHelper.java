@@ -17,15 +17,17 @@ public class FileUploadHelper {
     private final ComponentActivity activity;
 
     private final ActivityResultLauncher<PickVisualMediaRequest> imagePicker;
-    private final ActivityResultLauncher<PickVisualMediaRequest> videoPicker;
+    private final ActivityResultLauncher<String[]> videoPicker;
 
     public FileUploadHelper(ComponentActivity activity) {
 
         this.activity = activity;
 
+        // 🔥 الصور (لا نلمسها)
         imagePicker = activity.registerForActivityResult(
                 new ActivityResultContracts.PickMultipleVisualMedia(),
                 uris -> {
+
                     if (fileCallback == null) return;
 
                     if (uris != null && !uris.isEmpty()) {
@@ -41,9 +43,11 @@ public class FileUploadHelper {
                     fileCallback = null;
                 });
 
+        // 🔥 الفيديو بطريقة مختلفة
         videoPicker = activity.registerForActivityResult(
-                new ActivityResultContracts.PickMultipleVisualMedia(),
+                new ActivityResultContracts.OpenMultipleDocuments(),
                 uris -> {
+
                     if (fileCallback == null) return;
 
                     if (uris != null && !uris.isEmpty()) {
@@ -78,16 +82,15 @@ public class FileUploadHelper {
         }
 
         if (isVideo) {
-            videoPicker.launch(
-                    new PickVisualMediaRequest
-                            .Builder()
-                            .setMediaType(ActivityResultContracts.PickVisualMedia.VideoOnly.INSTANCE)
-                            .build()
-            );
+
+            // 🔥 فيديو فقط
+            videoPicker.launch(new String[]{"video/*"});
+
         } else {
+
+            // 🔥 صور فقط (كما هي بدون تغيير)
             imagePicker.launch(
-                    new PickVisualMediaRequest
-                            .Builder()
+                    new PickVisualMediaRequest.Builder()
                             .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
                             .build()
             );
