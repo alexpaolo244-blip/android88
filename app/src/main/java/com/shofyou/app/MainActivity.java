@@ -37,20 +37,32 @@ public class MainActivity extends AppCompatActivity {
 
         getWindow().setStatusBarColor(Color.TRANSPARENT);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+            int nightModeFlags =
+                    getResources().getConfiguration().uiMode
+                            & Configuration.UI_MODE_NIGHT_MASK;
+
+            if (nightModeFlags != Configuration.UI_MODE_NIGHT_YES) {
+
+                getWindow().getDecorView().setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            }
+        }
+
         webView = findViewById(R.id.webview);
         swipe = findViewById(R.id.swipe);
         ImageView splashLogo = findViewById(R.id.splashLogo);
 
-        // تسريع الرندر
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
+        // 🔥 تهيئة نظام رفع الصور الاحترافي
         fileUploadHelper = new FileUploadHelper(this);
 
         WebSettings ws = webView.getSettings();
+
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setAllowFileAccess(true);
-        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+        ws.setMediaPlaybackRequiresUserGesture(false);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
@@ -61,6 +73,12 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 splashLogo.setVisibility(View.GONE);
                 swipe.setRefreshing(false);
+
+                if (url != null && url.contains("/reels/")) {
+                    swipe.setEnabled(false);
+                } else {
+                    swipe.setEnabled(true);
+                }
             }
 
             @Override
@@ -85,18 +103,29 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
+
             @Override
             public boolean onShowFileChooser(WebView webView,
                                              android.webkit.ValueCallback<android.net.Uri[]> callback,
                                              FileChooserParams params) {
+
+                // 🔥 هنا نستخدم النظام الجديد مثل median
                 return fileUploadHelper.handleFileChooser(callback, params);
             }
         });
 
-        swipe.setOnRefreshListener(() -> webView.reload());
+        swipe.setOnRefreshListener(() -> {
 
-        // تحميل الموقع فوراً بدون تأخير
-        webView.post(() -> webView.loadUrl(HOME_URL));
+            String current = webView.getUrl();
+
+            if (current != null && current.contains("/reels/")) {
+                swipe.setRefreshing(false);
+            } else {
+                webView.reload();
+            }
+        });
+
+        webView.loadUrl(HOME_URL);
 
         handleBack();
     }
@@ -121,4 +150,4 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
     }
-}
+                  }
